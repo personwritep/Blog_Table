@@ -836,13 +836,13 @@ function main(){
                 }, 600); }}
 
 
-        let t_word_break=r_table.style.wordBreak;
-        if(t_word_break=='break-all'){
+        if(word_break=='break-all'){
             word_b.value='No'; }
-        else if(t_word_break=='break-word'){
+        else if(word_break=='break-word'){
             word_b.value='Yes'; }
         else{
             word_b.value='---'; }
+        r_table.style.wordBreak=word_break;
 
         word_b.onclick=function(){
             if(word_b.value=='No'){
@@ -854,8 +854,7 @@ function main(){
             else{
                 word_break='break-all';
                 word_b.value='No'; }
-
-            r_table.setAttribute('style', set_css());
+            r_table.style.wordBreak=word_break;
             set_fix(); }
 
 
@@ -1192,6 +1191,12 @@ function main(){
                 t_font.value='16'; }
             else{
                 t_font.value=t_font_size.replace(/[^0-9]/g, ''); }
+
+            let t_word_break=r_table.style.wordBreak; // 表「r_table」の word-break設定
+            if(t_word_break=='break-all' || t_word_break=='break-word'){
+                word_break=t_word_break; }
+            else{
+                word_break='unset'; }
 
 
 
