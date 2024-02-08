@@ -1668,7 +1668,8 @@ function main(){
         let cell_back=document.querySelector('#cell_back'); // 全体背景色の設定
         let t_font=document.querySelector('#t_font'); // 文字サイズの設定
 
-        return '#'+ t_id + ' { '+
+        let css=
+            '#'+ t_id + ' { '+
             'width: '+ t_width.value +'px; '+
             'margin: '+ table_position +'; '+
             'table-layout: '+ layout_fix +'; '+
@@ -1676,13 +1677,23 @@ function main(){
             'border-spacing: '+ border_space +'px; '+
             'border: '+ table_border_width +'px solid '+ border_color.value +'; '+
             'font: '+ t_font.value +'px Meiryo; '+
-            'word-break: '+ word_break +'; } '+
-            '#'+ t_id + ' tbody { background-color: '+ cell_back.value +'; '+
-            'transform: translateY(-'+ border_space/2 +'px); } '+
+            'word-break: '+ word_break +'; } ';
+
+        if(border_space>0){
+            css+=
+                '#'+ t_id + ' tbody { background-color: '+ cell_back.value +'; '+
+                'transform: translateY(-'+ border_space/2 +'px); } '; }
+        else{
+            css+=
+                '#'+ t_id + ' tbody { background-color: '+ cell_back.value +'; } '; }
+
+        css+=
             '#'+ t_id +' tr:first-child { background-color: '+ header_back.value +'; } '+
             '#'+ t_id + left_full +' td:first-child { background-color: '+ left_back.value +'; } '+
             '#'+ t_id +' td { border: '+ cell_border_width +'px solid '+ border_color.value +
-            '; padding: 0.2em '+ add_padd +'em 0; height: 1.5em; }'; }
+            '; padding: 0.2em '+ add_padd +'em 0; height: 1.5em; }';
+
+        return css; }
 
 
 
