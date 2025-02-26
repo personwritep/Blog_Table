@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Blog Table ⭐
 // @namespace        http://tampermonkey.net/
-// @version        5.4
+// @version        5.5
 // @description        編集画面上にtable表を作成する
 // @author        Ameba Blog User
 // @match        https://blog.ameba.jp/ucs/entry/srventry*
@@ -386,7 +386,7 @@ function main(){
                                                     if(Td==allTd[k]){
                                                         selectTd=k; }}} // 選択した列
 
-                                            if((selectTr>0 && selectTd==0) || (selectTr==0 && selectTd>0)){
+                                            if((selectTr>0 && selectTd==0) || (selectTr==0 && selectTd>=0)){
                                                 trim_table(Table, selectTr, selectTd); }
                                             else{
                                                 remove_mark_trim();
@@ -462,7 +462,7 @@ function main(){
                 join_area.value=1; }
 
 
-            join_area.onchange=function(){
+            join_area.oninput=function(){
                 remove_mark_join();
                 selectTd.classList.add('join_active');
 
@@ -500,7 +500,7 @@ function main(){
                 join_area.value=1; }
 
 
-            join_area.onchange=function(){
+            join_area.oninput=function(){
                 remove_mark_join();
                 selectTd.classList.add('join_active');
 
@@ -602,7 +602,7 @@ function main(){
         trim_select();
 
         if(trim==0){
-            if(D==0){ // 行追加処理
+            if(D==0 && R>0){ // 行追加処理
                 let allTr=t_table.querySelectorAll('tbody tr');
                 let allTd=allTr[R].querySelectorAll('td');
                 for(let k=0; k<allTd.length; k++){
@@ -617,7 +617,7 @@ function main(){
                 trim_action(t_table, 2, R, D); }}
 
         if(trim==1){
-            if(D==0){ // 行削除処理
+            if(D==0 && R>0){ // 行削除処理
                 let allTr=t_table.querySelectorAll('tbody tr');
                 let allTd=allTr[R].querySelectorAll('td');
                 for(let k=0; k<allTd.length; k++){
