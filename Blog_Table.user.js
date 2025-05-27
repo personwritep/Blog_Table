@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Blog Table ⭐
 // @namespace        http://tampermonkey.net/
-// @version        5.5
+// @version        5.6
 // @description        編集画面上にtable表を作成する
 // @author        Ameba Blog User
 // @match        https://blog.ameba.jp/ucs/entry/srventry*
@@ -259,9 +259,12 @@ function main(){
             '#trim_cancel { margin-right: 30px !important; }'+
             '#join_dir { font-size: 17px; vertical-align: -1px; }'+
             '#join_area { width: 48px; text-align: center; }'+
+            '#join_area::-webkit-inner-spin-button { height: 20px; margin-top: 1px; }'+
 
             '.bc_help4 { text-align: left; margin: -4px 20px; }'+
             '.bc_help4 input { color: #000; background: #fff; border-radius: 3px; }'+
+            '.bc_help4 input[type=number]::-webkit-inner-spin-button { '+
+            'height: 20px; margin-top: 1px; }'+
             '.bc_help4 #col_close { margin-right: 30px !important; }'+
             '.bc_help4 #specified1, .bc_help4 #specified2 { width: 18px; height: 18px; '+
             'margin-right: 15px; vertical-align: -6px; border: 2px solid #fff; background: #fff; }'+
