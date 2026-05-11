@@ -1,0 +1,291 @@
+// ==UserScript==
+// @name          Blog Table ⭐
+// @namespace    http://tampermonkey.net/
+// @version       0.3
+// @description  編集画面上にtable表を作成する
+// @author        Ameba Blog User
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @exclude      https://blog.ameba.jp/ucs/entry/srventrylist.do*
+// @grant         none
+// ==/UserScript==
+
+
+let retry=0;
+let interval=setInterval(wait_target, 100);
+function wait_target(){
+    retry++;
+    if(retry>10){ // リトライ制限 10回 1sec
+        clearInterval(interval); }
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    if(target){
+        clearInterval(interval);
+        main(); }}
+
+
+function main(){
+    let ua=0; // Chromeの場合のフラグ
+    let agent=window.navigator.userAgent.toLowerCase();
+    if(agent.indexOf('firefox') > -1){ ua=1; } // Firefoxの場合のフラグ
+
+
+    let table_width='100%';
+
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    let monitor=new MutationObserver( catch_key );
+    monitor.observe(target, {childList: true}); // ショートカット待受け開始
+
+    catch_key();
+
+    function catch_key(){
+        let header_link=document.querySelector('.l-gHeaderLeft__link a');
+        if(header_link){ // 起動を「トップページ」アイコンに表示 📛
+            header_link.style.boxShadow='inset -14px 0 0 0 #79fbf6'; }
+
+
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            iframe_doc.addEventListener('keydown', check_key);
+            function check_key(event){
+                let gate=-1;
+                if(event.ctrlKey==true){
+                    if(event.keyCode==112){
+                        event.preventDefault(); gate=1; }
+                    if(gate==1){
+                        event.stopImmediatePropagation();
+                        do_task(); }}}
+
+            function do_task(){
+                let t_panel=document.querySelector('#t_panel');
+                if(!t_panel){
+                    table_panel();
+                    excite_icon(1);
+                    makeTable(); }
+                else if(t_panel){
+                    excite_icon(0);
+                    t_panel.remove(); }}
+        }} // catch_key()
+
+
+    function table_panel(){
+        let panel=document.createElement('div');
+        panel.setAttribute('id', 't_panel');
+
+        panel.innerHTML=
+            '<span class="t_label">列数</span>'+
+            '<input id="col" type="number" min="1" value="1">'+
+            '<span class="t_label">行数</span>'+
+            '<input id="row" type="number" min="1" value="1">'+
+            '<input id="wide" type="submit" value="◁表幅▷">'+
+            '<span class="t_label">枠線幅</span>'+
+            '<input id="border_width" type="number" min="-1" value="1">'+
+            '<span class="t_label">色</span>'+
+            '<input id="border_color" type="text"  value="#999">'+
+            '<span class="t_label">最上行背景色</span>'+
+            '<input id="header_back" type="text" value="#F4F4F4">'+
+            '<span class="t_label">全体背景色</span>'+
+            '<input id="cell_back" type="text" value="#FFF">'+
+            '<span class="t_label">文字サイズ</span>'+
+            '<input id="t_font" type="number" min="12" max="32" value="16">'+
+            '<input id="set" type="submit" value="表作成">';
+
+        let css=
+            '#t_panel { position: fixed; top: 15px; left: calc(50% - 490px); width: 948px; '+
+            'padding: 6px 15px; font-size: 14px; border: 1px solid #ccc; '+
+            'border-radius: 4px; background: #eff5f6; z-index: 10; }'+
+            '#t_panel input { margin-right: 10px; padding-top: 2px; }'+
+            '.t_label { margin: 0 3px 0 0; }'+
+            '#col, #row, #border_width, #t_font { width: 36px; text-align: center; }'+
+            '#border_color, #header_back, #cell_back { width: 66px; padding: 2px 8px 0 2px; '+
+            'border: thin solid #aaa; height: 23px; }'+
+            'input#border_width { margin-right: 2px; }'+
+            'input#set { margin: 0 0 0 -20px; padding: 2px 4px 0; '+
+            'box-shadow: inset 0 0 0 20px #fd4; float: right; }';
+
+        if(ua==1){
+            css=css +
+                '#col, #row, #border_width, #t_font { height: 23px; border: thin solid #aaa; }'+
+                'input#set { margin: 1px 0 0 -20px; padding: 3px 4px 1px; '+
+                'border: thin solid #aaa; }'; }
+
+        let style=document.createElement('style');
+        style.innerHTML=css;
+        panel.appendChild(style);
+
+        document.querySelector('.l-body').appendChild(panel); }
+
+
+    function excite_icon(n){
+        if(ua==0){
+            let label=document.querySelector('#cke_16_label.cke_button__markercolor_label');
+            let button=document.querySelector('#cke_17.cke_button__markercolorgenerator');
+            if(n==1){
+                label.style.height='17px';
+                button.style.width='20px'; }
+            else{
+                label.style.height='3px';
+                button.style.width='11px'; }}
+        else if(ua==1){
+            let label=document.querySelector('#cke_15_label.cke_button__markercolor_label');
+            let button=document.querySelector('#cke_16.cke_button__markercolorgenerator');
+            if(n==1){
+                label.style.height='17px';
+                button.style.width='20px'; }
+            else{
+                label.style.height='3px';
+                button.style.width='11px'; }}}
+
+
+    function get_color(){
+        let set_color;
+
+        if(ua==0){
+            let icon=document.querySelector('#cke_16');
+            let color_label=document.querySelector('#cke_16_label');
+            icon.addEventListener('click', function(){
+                set_color=color_label.getAttribute('data-color'); }); }
+        else if(ua==1){
+            let icon=document.querySelector('#cke_15');
+            let color_label=document.querySelector('#cke_15_label');
+            icon.addEventListener('click', function(){
+                set_color=color_label.getAttribute('data-color'); }); }
+
+
+        let color_input=document.querySelectorAll('#t_panel input[type="text"]');
+        for(let k=0; k<color_input.length; k++){
+            copy_color(k); }
+
+        function copy_color(k){
+            color_input[k].onclick=function(event){
+                if(event.ctrlKey==true){
+                    event.preventDefault();
+                    color_input[k].value='#'+ set_color;
+                    color_input[k].style.boxShadow='inset -8px 0 ' + color_input[k].value; }}
+
+            color_input[k].onkeydown=function(event){
+                if(event.keyCode==13){
+                    event.preventDefault();
+                    if(test_color(color_input[k].value)){
+                        color_input[k].style.boxShadow='inset -8px 0 ' + color_input[k].value; }
+                    else{
+                        if(color_input[k].value==''){
+                            color_input[k].style.boxShadow='inset 0 0 0 1px black'; }
+                        else{
+                            color_input[k].style.boxShadow='inset 0 0 0 1px black';
+                            color_input[k].style.boxShadow=
+                                'inset 0 0 0 1px black, inset -8px 0 ' + color_input[k].value; }}}}}
+
+        function test_color(color){
+            return color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/) !== null; }
+    } // get_color()
+
+
+    function show_color(){
+        let color_input=document.querySelectorAll('#t_panel input[type="text"]');
+        for(let k=0; k<color_input.length; k++){
+            color_input[k].style.boxShadow='inset -8px 0 ' + color_input[k].value; }}
+
+
+    function table_width_set(){
+        let wide=document.querySelector('#wide'); // 横幅の拡張・非拡張の設定
+        if(table_width=='100%'){
+            wide.value='◁表幅▷'; }
+        else{
+            wide.value='▷表幅◁'; }
+        wide.onclick=function(event){
+            event.preventDefault();
+            if(table_width=='100%'){
+                table_width='auto';
+                wide.value='▷表幅◁'; }
+            else{
+                table_width='100%';
+                wide.value='◁表幅▷'; }}}
+
+
+    function table_id(){ // 複数tableを生成時に異なるidを付ける
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+            for(let k=0; k<100; k++){
+                let table_id='ambt'+k;
+                if(iframe_doc.getElementById(table_id)==null){
+                    return table_id; }}}}
+
+
+    function makeTable(){
+        table_width_set();
+        show_color();
+        get_color();
+
+        let set=document.querySelector('#set'); // 作成ボタン
+        set.addEventListener('click', set_table);
+
+
+        function set_table(){
+            if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+                let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+                let iframe_doc=editor_iframe.contentWindow.document;
+
+                let rows=[];
+                let col=document.querySelector('#col'); // 列数の設定
+                let row=document.querySelector('#row'); // 行数の設定
+                let border_width=document.querySelector('#border_width'); // 枠線幅の設定
+                let border_color=document.querySelector('#border_color'); // 枠線色の設定
+                let header_back=document.querySelector('#header_back'); // 最上行背景色の設定
+                let cell_back=document.querySelector('#cell_back'); // 全体背景色の設定
+                let t_font=document.querySelector('#t_font'); // 文字サイズの設定
+
+
+                let table=iframe_doc.createElement("table");
+                for(let i=0; i<row.value; i++){
+                    rows.push(table.insertRow(-1)); // 行の追加
+                    for(let j=0; j<col.value; j++){
+                        let cell=rows[i].insertCell(-1);
+                        cell.appendChild(document.createTextNode("")); }} // 列の追加
+
+                let this_id=table_id()
+                table.setAttribute('id', this_id);
+
+
+                let border_collapse;
+                let table_border;
+                if(border_width.value>-1){
+                    border_collapse='collapse';
+                    table_border='none'; }
+                else if(border_width.value==-1){
+                    border_collapse='separate';
+                    table_border='1px solid ' + border_color.value; }
+
+                let border_para;
+                if(border_width.value>0){
+                    border_para=border_width.value +'px solid '+ border_color.value; }
+                else if(border_width.value==-1){
+                    border_para='1px solid '+ border_color.value; }
+
+                let css=
+                    '#'+ this_id + ' { '+
+                    'width: '+ table_width +'; '+
+                    'border-collapse: '+ border_collapse +'; '+
+                    'border: '+ table_border +'; '+
+                    'font: normal '+ t_font.value +'px Meiryo; '+
+                    'background-color: '+ cell_back.value +'; } '+
+                    '#'+ this_id +' tr:first-child { background-color: '+ header_back.value +'; } '+
+                    '#'+ this_id +' td { border: '+ border_para +'; padding: 0.2em 0.6em 0px; }';
+
+                if(ua==1){
+                    css=css +' #'+ this_id +' td { height: 1.5em; }'; }
+
+                let style=iframe_doc.createElement("style");
+                style.insertAdjacentHTML('afterbegin', css);
+
+
+                let selection=iframe_doc.getSelection();
+                let range=selection.getRangeAt(0);
+                let ac_node=selection.anchorNode;
+                ac_node.parentNode.insertBefore(style, ac_node);
+                ac_node.parentNode.insertBefore(table, ac_node);
+
+            }}} // makeTable()
+
+} // main()
