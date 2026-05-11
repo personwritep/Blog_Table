@@ -1,0 +1,529 @@
+// ==UserScript==
+// @name          Blog Table ⭐
+// @namespace    http://tampermonkey.net/
+// @version       0.5
+// @description  編集画面上にtable表を作成する
+// @author        Ameba Blog User
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @exclude      https://blog.ameba.jp/ucs/entry/srventrylist.do*
+// @grant         none
+// ==/UserScript==
+
+
+let retry=0;
+let interval=setInterval(wait_target, 100);
+function wait_target(){
+    retry++;
+    if(retry>10){ // リトライ制限 10回 1sec
+        clearInterval(interval); }
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    if(target){
+        clearInterval(interval);
+        main(); }}
+
+
+function main(){
+    let ua=0; // Chromeの場合のフラグ
+    let agent=window.navigator.userAgent.toLowerCase();
+    if(agent.indexOf('firefox') > -1){ ua=1; } // Firefoxの場合のフラグ
+
+    let task=0; // 作成・更新・終了
+    let table_setting=0;
+    let table_width;
+    let table_position;
+    let border_collapse;
+    let table_border_width;
+    let cell_border_width;
+
+
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    let monitor=new MutationObserver( catch_key );
+    monitor.observe(target, {childList: true}); // ショートカット待受け開始
+
+    catch_key();
+
+    function catch_key(){
+        let header_link=document.querySelector('.l-gHeaderLeft__link a');
+        if(header_link){ // 起動を「トップページ」アイコンに表示 📛
+            header_link.style.boxShadow='inset -14px 0 0 0 #79fbf6'; }
+
+
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            iframe_doc.addEventListener('keydown', check_key);
+            function check_key(event){
+                let gate=-1;
+                if(event.ctrlKey==true){
+                    if(event.keyCode==112){
+                        event.preventDefault(); gate=1; }
+                    if(gate==1){
+                        event.stopImmediatePropagation();
+                        do_task(); }}}
+
+            function do_task(){
+                if(task==0){
+                    task=1;
+                    table_panel();
+                    excite_icon(1);
+                    make_table(); }
+                else if(task==1){
+                    task=2;
+                    renew_table();
+                    brfore_end(); }
+                else if(task==2){
+                    task=0;
+                    excite_icon(0);
+                    remove_t_panel();
+                    remove_t_mark(); }}
+        }} // catch_key()
+
+
+    function remove_t_panel(){
+        document.querySelector('#t_panel').remove(); }
+
+    function table_panel(){
+        let panel=document.createElement('div');
+        panel.setAttribute('id', 't_panel');
+
+        panel.innerHTML=
+            '<span class="t_label">列数</span>'+
+            '<input id="col" type="number" min="1" value="1">'+
+            '<span class="t_label">行数</span>'+
+            '<input id="row" type="number" min="1" value="1">'+
+            '<span class="t_label">配置</span>'+
+            '<input id="wide" type="submit" value="◁▷">'+
+            '<span class="t_label">枠線幅</span>'+
+            '<input id="border_width" type="number" min="-1" value="1">'+
+            '<span class="t_label">色</span>'+
+            '<input id="border_color" type="text" value="#999">'+
+            '<span class="t_label">最上行背景色</span>'+
+            '<input id="header_back" type="text" value="#F4F4F4">'+
+            '<span class="t_label">全体背景色</span>'+
+            '<input id="cell_back" type="text" value="#FFF">'+
+            '<span class="t_label">文字サイズ</span>'+
+            '<input id="t_font" type="number" min="12" max="32" value="16">'+
+            '<input id="set" type="submit" value="表作成">';
+
+        let css=
+            '#t_panel { position: fixed; top: 15px; left: calc(50% - 490px); width: 954px; '+
+            'padding: 6px 12px; font-size: 14px; border: 1px solid #ccc; '+
+            'border-radius: 4px; background: #eff5f6; z-index: 10; }'+
+            '#t_panel input { margin-right: 9px; padding-top: 2px; }'+
+            '.t_label { margin: 0 3px 0 0; }'+
+            '#col, #row, #border_width, #t_font { width: 36px; text-align: center; }'+
+            '#wide { width: 3.4em; letter-spacing: -0.5em; text-indent: -0.5em; }'+
+            '#border_color, #header_back, #cell_back { width: 66px; padding: 2px 8px 0 2px; '+
+            'border: thin solid #aaa; height: 23px; }'+
+            'input#border_width { margin-right: 2px; }'+
+            'input#set { margin: 0 0 0 -20px; padding: 2px 4px 0; '+
+            'box-shadow: inset 0 0 0 20px #fd4; float: right; }'+
+            'input#renew { margin: 0 0 0 -20px; padding: 2px 4px 0; '+
+            'box-shadow: inset 0 0 0 20px #1976d2; color: #fff; float: right; }'+
+            '#cke_42 { top: 60px !important; left: calc( 50% - 45px) !important; }';
+
+        if(ua==1){
+            css=css +
+                '#col, #row, #border_width, #t_font { height: 23px; border: thin solid #aaa; }'+
+                'input#set { margin: 1px 0 0 -20px; padding: 3px 4px 1px; '+
+                'border: thin solid #aaa; }'+
+                'input#renew { margin: 1px 0 0 -20px; padding: 3px 4px 1px; '+
+                'border: thin solid #aaa; }'; }
+
+        let style=document.createElement('style');
+        style.innerHTML=css;
+        panel.appendChild(style);
+
+        document.querySelector('.l-body').appendChild(panel); }
+
+
+    function excite_icon(n){
+        if(ua==0){
+            let label=document.querySelector('#cke_16_label.cke_button__markercolor_label');
+            if(n==1){
+                label.style.height='17px'; }
+            else{
+                label.style.height='3px'; }}
+        else if(ua==1){
+            let label=document.querySelector('#cke_15_label.cke_button__markercolor_label');
+            if(n==1){
+                label.style.height='17px'; }
+            else{
+                label.style.height='3px'; }}}
+
+
+    function pick_color(){
+        let set_color;
+        let color_input_selector;
+        let color_label;
+        let icon_button;
+
+        if(ua==0){
+            color_label=document.querySelector('#cke_16_label');
+            icon_button=document.querySelector('#cke_17'); }
+        else if(ua==1){
+            color_label=document.querySelector('#cke_15_label');
+            icon_button=document.querySelector('#cke_16'); }
+
+        let target_p=color_label; // 監視 アイコンのカラーラベル
+        let monitor_p=new MutationObserver( get_copy );
+
+        let color_input=document.querySelectorAll('#t_panel input[type="text"]');
+        for(let k=0; k<color_input.length; k++){
+            input_color(k); }
+
+        function input_color(k){
+            color_input[k].onclick=function(event){
+                if(event.ctrlKey==true){
+                    event.preventDefault();
+                    color_input_selector=k;
+                    icon_button.click();
+                    monitor_p.observe(target_p, {attributes: true}); }} // アイコンカラー取得開始
+
+            color_input[k].onkeydown=function(event){
+                if(event.keyCode==13){
+                    event.preventDefault();
+                    if(test_color(color_input[k].value)){
+                        color_input[k].style.boxShadow='inset -8px 0 ' + color_input[k].value; }
+                    else{
+                        if(color_input[k].value==''){
+                            color_input[k].style.boxShadow='inset 0 0 0 1px black'; }
+                        else{
+                            color_input[k].style.boxShadow='inset 0 0 0 1px black';
+                            color_input[k].style.boxShadow=
+                                'inset 0 0 0 1px black, inset -8px 0 ' + color_input[k].value; }}}}
+
+            function test_color(color){
+                return color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/) !== null; }}
+
+        function get_copy(){
+            set_color=color_label.getAttribute('data-color');
+            color_input[color_input_selector].value='#'+ set_color;
+            color_input[color_input_selector].style.boxShadow=
+                'inset -8px 0 ' + color_input[color_input_selector].value;
+            monitor_p.disconnect(); } // アイコンカラー取得終了
+
+        icon_button.addEventListener('click', function(){
+            monitor_p.disconnect(); }) // アイコンカラー取得終了
+    } // pick_color()
+
+
+    function show_color(){
+        let color_input=document.querySelectorAll('#t_panel input[type="text"]');
+        for(let k=0; k<color_input.length; k++){
+            color_input[k].style.boxShadow='inset -8px 0 ' + color_input[k].value; }}
+
+
+    function table_width_set(){
+        let wide=document.querySelector('#wide'); // 横幅の拡張・非拡張・中央配置の設定
+        if(table_setting==0){
+            wide.value='┃◁　　▷┃';
+            table_width='100%';
+            table_position='0'; }
+        else if(table_setting==1){
+            wide.value='┃　▷◁　┃';
+            table_width='auto';
+            table_position='0 auto'; }
+        else if(table_setting==2){
+            wide.value='┃▷◁　　┃';
+            table_width='auto';
+            table_position='0'; }
+
+        wide.onclick=function(event){
+            event.preventDefault();
+            if(table_setting==0){
+                table_setting=1;
+                wide.value='┃　▷◁　┃';
+                table_width='auto';
+                table_position='0 auto'; }
+            else if(table_setting==1){
+                table_setting=2;
+                wide.value='┃▷◁　　┃';
+                table_width='auto';
+                table_position='0'; }
+            else if(table_setting==2){
+                table_setting=0;
+                wide.value='┃◁　　▷┃';
+                table_width='100%';
+                table_position='0'; }}}
+
+
+    function table_id(){ // 複数tableを生成時に異なるidを付ける
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+            for(let k=0; k<100; k++){
+                let table_id='ambt'+k;
+                if(iframe_doc.getElementById(table_id)==null){
+                    return table_id; }}}}
+
+
+    function table_border_set(){
+        border_set();
+
+        let border_width=document.querySelector('#border_width'); // 枠線幅の設定
+        border_width.onclick=function(event){
+            event.preventDefault();
+            border_set(); }
+
+        function border_set(){
+            let border_width=document.querySelector('#border_width'); // 枠線幅の設定
+            if(border_width.value>-1){
+                border_collapse='collapse';
+                table_border_width='0';
+                cell_border_width=border_width.value; }
+            else if(border_width.value==-1){
+                border_collapse='separate';
+                table_border_width='1';
+                cell_border_width=1; }}}
+
+
+    function remove_t_mark(){
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            let amb_teble=iframe_doc.querySelectorAll('table[id^="ambt"]');
+            for(let k=0; k<amb_teble.length; k++){
+                amb_teble[k].style.boxShadow='none'; }}}
+
+
+
+    function make_table(){
+        table_width_set();
+        table_border_set();
+        show_color();
+        pick_color();
+
+
+        let set=document.querySelector('#set'); // 作成ボタン
+        set.addEventListener('click', function(event){
+            set_table(); });
+
+
+        function set_table(){
+            if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+                let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+                let iframe_doc=editor_iframe.contentWindow.document;
+
+                let rows=[];
+                let col=document.querySelector('#col'); // 列数の設定
+                let row=document.querySelector('#row'); // 行数の設定
+                let border_width=document.querySelector('#border_width'); // 枠線幅の設定
+                let border_color=document.querySelector('#border_color'); // 枠線色の設定
+                let header_back=document.querySelector('#header_back'); // 最上行背景色の設定
+                let cell_back=document.querySelector('#cell_back'); // 全体背景色の設定
+                let t_font=document.querySelector('#t_font'); // 文字サイズの設定
+
+
+                let table=iframe_doc.createElement("table");
+                for(let i=0; i<row.value; i++){
+                    rows.push(table.insertRow(-1)); // 行の追加
+                    for(let j=0; j<col.value; j++){
+                        let cell=rows[i].insertCell(-1);
+                        cell.appendChild(document.createTextNode("")); }} // 列の追加
+
+                let this_id=table_id()
+                table.setAttribute('id', this_id);
+
+                let css=
+                    '#'+ this_id + ' { '+
+                    'width: '+ table_width +'; '+
+                    'margin: '+ table_position +'; '+
+                    'border-collapse: '+ border_collapse +'; '+
+                    'border: '+ table_border_width +'px solid '+ border_color.value +'; '+
+                    'font: normal '+ t_font.value +'px Meiryo; '+
+                    'background-color: '+ cell_back.value +'; } '+
+                    '#'+ this_id +' tr:first-child { background-color: '+ header_back.value +'; } '+
+                    '#'+ this_id +' td { border: '+ cell_border_width +'px solid '+ border_color.value +
+                    '; padding: 0.2em 0.6em 0; }';
+
+                if(ua==1){
+                    css=css +' #'+ this_id +' td { height: 1.5em; }'; }
+
+                let style=iframe_doc.createElement("style");
+                style.setAttribute('class', this_id);
+                style.insertAdjacentHTML('afterbegin', css);
+
+
+                let selection=iframe_doc.getSelection();
+                let range=selection.getRangeAt(0);
+                let ac_node=selection.anchorNode;
+                ac_node.parentNode.insertBefore(style, ac_node);
+                ac_node.parentNode.insertBefore(table, ac_node);
+
+            }} // set_table()
+    } //make_table()
+
+
+
+    function renew_table(){
+        let this_table;
+
+        let set=document.querySelector('#set'); // 作成ボタン
+        set.remove();
+        let panel=document.querySelector('#t_panel');
+        let renew=document.createElement("input");
+        renew.setAttribute('id', 'renew');
+        renew.setAttribute('type', 'submit');
+        renew.value='表更新';
+        panel.appendChild(renew);
+
+
+        let target_r=document.getElementById('cke_1_contents'); // 監視 target
+        let monitor_r=new MutationObserver( inner );
+        monitor_r.observe(target_r, {childList: true}); // ショートカット待受け開始
+
+        inner();
+
+        function inner(){
+
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            let this_col; // 更新前の列数
+            let this_row; // 更新前の行数
+            let col=document.querySelector('#col'); // 列数の設定
+            let row=document.querySelector('#row'); // 行数の設定
+            let border_width=document.querySelector('#border_width'); // 枠線幅の設定
+            let border_color=document.querySelector('#border_color'); // 枠線色の設定
+            let header_back=document.querySelector('#header_back'); // 最上行背景色の設定
+            let cell_back=document.querySelector('#cell_back'); // 全体背景色の設定
+            let t_font=document.querySelector('#t_font'); // 文字サイズの設定
+
+
+           let amb_teble=iframe_doc.querySelectorAll('table[id^="ambt"]');
+            for(let k=0; k<amb_teble.length; k++){
+                select_renew(k); }
+
+
+            function select_renew(k){
+                amb_teble[k].onclick=function(){
+                    this_table=k;
+                    let this_id=amb_teble[this_table].id
+                    let t_style=iframe_doc.getElementsByClassName(this_id)[0].textContent;
+
+                    if(task==2){
+                        remove_t_mark(); // 編集マークをリセットし表示する
+                        amb_teble[this_table].style.boxShadow='-4px 0 #fff, -8px 0 #2196f3'; }
+
+                    let t_tr=amb_teble[this_table].querySelectorAll('tr');
+                    row.value=t_tr.length;
+                    row.setAttribute('min', row.value);
+
+                    let t_td=amb_teble[this_table].querySelectorAll('td');
+                    col.value=t_td.length / t_tr.length;
+                    col.setAttribute('min', col.value);
+
+
+                    if(t_style.indexOf('width: 100%')!=-1){
+                        table_setting=0; }
+                    else if(t_style.indexOf('width: auto')!=-1){
+                        if(t_style.indexOf('margin: 0 auto')!=-1){
+                            table_setting=1; }
+                        else{
+                            table_setting=2; }}
+                    table_width_set();
+
+
+                    let t_border_width=
+                        t_style.match(/td { border.*?px/).toString().replace(/[^0-9]/g, '');
+                    if(t_border_width=='1'){
+                        if(t_style.indexOf('collapse: collapse')!=-1){
+                            border_width.value=1; }
+                        if(t_style.indexOf('collapse: separate')!=-1){
+                            border_width.value=-1; }}
+                    else{
+                        border_width.value=t_border_width; }
+                    table_border_set();
+
+
+                    let t_border_color=
+                        t_style.match(/td { border.*?;/).toString().match(/#.*;/).toString().replace(/;/, '');
+                    border_color.value=t_border_color;
+                    border_color.style.boxShadow='inset -8px 0 ' + border_color.value;
+
+
+                    let t_header_back=t_style.match(/tr:first-child { background-color.*?;/)
+                    .toString().match(/#.*;/).toString().replace(/;/, '');
+                    header_back.value=t_header_back;
+                    header_back.style.boxShadow='inset -8px 0 ' + header_back.value;
+
+
+                    let t_cell_back=t_style.match(/Meiryo; background-color.*?;/)
+                    .toString().match(/#.*;/).toString().replace(/;/, '');
+                    cell_back.value=t_cell_back;
+                    cell_back.style.boxShadow='inset -8px 0 ' + cell_back.value;
+
+
+                    let t_font_size=
+                        t_style.match(/normal .*?px Meiryo/).toString().replace(/[^0-9]/g, '');
+                    t_font.value=t_font_size; }
+
+
+                renew.onclick=function(){
+                    let insert=[];
+
+                    let t_tr=amb_teble[this_table].querySelectorAll('tr');
+                    this_row=t_tr.length;
+
+                    let t_td=amb_teble[this_table].querySelectorAll('td');
+                    this_col=t_td.length / t_tr.length;
+
+                    for(let i=this_row; i<row.value; i++){
+                        insert[i]=amb_teble[this_table].insertRow(-1); // 行の追加
+                        for(let j=0; j<this_col; j++){
+                            let cell=insert[i].insertCell(-1);
+                            cell.appendChild(document.createTextNode("")); }}
+                    row.setAttribute('min', row.value);
+
+                    insert=amb_teble[this_table].querySelectorAll('tr');
+                    for(let i=0; i<row.value; i++){
+                        for(let j=this_col; j<col.value; j++){
+                            let cell=insert[i].insertCell(-1);
+                            cell.appendChild(document.createTextNode("")); }} // 列の追加
+                    col.setAttribute('min', col.value);
+
+                    let this_id=amb_teble[this_table].id
+
+                    let css=
+                        '#'+ this_id + ' { '+
+                        'width: '+ table_width +'; '+
+                        'margin: '+ table_position +'; '+
+                        'border-collapse: '+ border_collapse +'; '+
+                        'border: '+ table_border_width +'px solid '+ border_color.value +'; '+
+                        'font: normal '+ t_font.value +'px Meiryo; '+
+                        'background-color: '+ cell_back.value +'; } '+
+                        '#'+ this_id +' tr:first-child { background-color: '+ header_back.value +'; } '+
+                        '#'+ this_id +' td { border: '+ cell_border_width +'px solid '+ border_color.value +
+                        '; padding: 0.2em 0.6em 0; }';
+
+                    if(ua==1){
+                        css=css +' #'+ this_id +' td { height: 1.5em; }'; }
+
+                    let t_style_tag=iframe_doc.getElementsByClassName(this_id)[0];
+                    if(t_style_tag){
+                        t_style_tag.innerHTML=css; }}
+
+            }} // select_renew()
+        }} // renew_table()
+
+
+
+    function brfore_end(){
+        let submitButton=document.querySelectorAll('.js-submitButton');
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            if(editor_iframe !=null){ //「通常表示」編集画面が実行条件
+                submitButton[0].addEventListener("mousedown", all_clear, false);
+                submitButton[1].addEventListener("mousedown", all_clear, false);
+                submitButton[2].addEventListener("mousedown", all_clear, false); }
+
+            function all_clear(){
+                remove_t_mark(); }}} // table表の編集マークを削除
+
+} // main()
