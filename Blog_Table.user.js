@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Blog Table ⭐
 // @namespace        http://tampermonkey.net/
-// @version        5.6
+// @version        5.7
 // @description        編集画面上にtable表を作成する
 // @author        Ameba Blog User
 // @match        https://blog.ameba.jp/ucs/entry/srventry*
@@ -480,7 +480,8 @@ function main(){
 
             join_do.onclick=function(){
                 for(let k=start+1; k<start+col_s/1; k++){
-                    tdAll[k].style.display=''; }
+                    tdAll[k].classList.remove('jh');
+                    clear_class(tdAll[k]); }
 
                 act_do(start, 0, 0, 'colspan');
                 act_end();
@@ -520,7 +521,8 @@ function main(){
             join_do.onclick=function(){
                 for(let k=start_r+1; k<start_r+row_s/1 ; k++){
                     let tdAll=trAll[k].querySelectorAll('td');
-                    tdAll[start].style.display=''; }
+                    tdAll[start].classList.remove('jh');
+                    clear_class(tdAll[start]); }
 
                 act_do(start_r, start, 1, 'rowspan');
                 act_end();
@@ -552,7 +554,7 @@ function main(){
         function act_area(k, stp, attr_value, scout){
             if(k>stp + attr_value/1 -1){
                 if(scout.getAttribute('rowspan') ||
-                   scout.getAttribute('colspan') || scout.style.display=='none'){
+                   scout.getAttribute('colspan') || scout.classList.contains('jh')){
                     join_area.value=join_area.value/1 -1; }
                 else{
                     scout.classList.add('join_active'); }} // 次の結合交差まで設定可能
@@ -569,11 +571,11 @@ function main(){
                 for(let k=stp+1; k<end; k++){
                     if(type==0){
                         if(tdAll[k]){
-                            tdAll[k].style.display='none'; }}
+                            tdAll[k].classList.add('jh'); }}
                     else{
                         if(trAll[k]){
                             let tdAll=trAll[k].querySelectorAll('td');
-                            tdAll[stpd].style.display='none'; }}}
+                            tdAll[stpd].classList.add('jh'); }}}
                 selectTd.setAttribute(attr, join_area.value); }
             else{
                 selectTd.removeAttribute(attr); }}
@@ -585,6 +587,7 @@ function main(){
             setTimeout(()=>{
                 selectTd.style.filter='';
                 selectTd.style.transition='';
+                clear_style(selectTd);
             }, 1000); }
 
 
@@ -706,7 +709,8 @@ function main(){
                 t_table.style.width='max-content';
                 t_width.value=real_width(t_table);
                 renew_style(t_table);
-                t_table.style.width=''; }
+                t_table.style.width='';
+                clear_style(t_table); }
 
             edit_table(3, t_table);
             show_first(0); }
@@ -730,7 +734,7 @@ function main(){
                     let jump_d=allTd[k].getAttribute('colspan')/1;
                     k+=jump_d-1;
                     continue; }
-                else if(allTd[k].style.display=='none'){
+                else if(allTd[k].classList.contains('jh')){
                     raw_fix(1, allTr, R, k); }}
 
             for(let k=0; k<allTd_c.length; k++){
@@ -749,7 +753,7 @@ function main(){
                     let jump=refer_td.getAttribute('rowspan')/1;
                     k+=jump-1;
                     continue; }
-                else if(refer_td.style.display=='none'){
+                else if(refer_td.classList.contains('jh')){
                     col_fix(1, allTd, D); }}
 
             for(let k=0; k<allTr.length; k++){
@@ -769,12 +773,13 @@ function main(){
                     let jump_d=allTd[k].getAttribute('colspan')/1;
                     k+=jump_d-1;
                     continue; }
-                else if(allTd[k].style.display=='none'){
+                else if(allTd[k].classList.contains('jh')){
                     raw_fix(0, allTr, R, k); }
                 else if(allTd[k].hasAttribute('rowspan')){
                     let jump=allTd[k].getAttribute('rowspan')/1;
                     for(let kr=R+1; kr<R+jump; kr++){
-                        allTr[kr].querySelectorAll('td')[k].style.display=''; }}}
+                        allTr[kr].querySelectorAll('td')[k].classList.remove('jh');
+                        clear_class(allTr[kr].querySelectorAll('td')[k]); }}}
 
             allTr[R].remove(); }
 
@@ -789,12 +794,13 @@ function main(){
                     let jump=refer_td.getAttribute('rowspan')/1;
                     k+=jump-1;
                     continue; }
-                else if(refer_td.style.display=='none'){
+                else if(refer_td.classList.contains('jh')){
                     col_fix(0, allTd, D); }
                 else if(refer_td.hasAttribute('colspan')){
                     let jump_d=refer_td.getAttribute('colspan')/1;
                     for(let kd=D+1; kd<D+jump_d; kd++){
-                        allTd[kd].style.display=''; }}}
+                        allTd[kd].classList.remove('jh');
+                        clear_class(allTd[kd]); }}}
 
             for(let k=0; k<allTr.length; k++){
                 allTr[k].querySelectorAll('td')[D].remove(); }}
@@ -1132,6 +1138,7 @@ function main(){
 
         col_l.onclick=function(){
             top_td[cell_set].classList.remove('col_active');
+            clear_class(top_td[cell_set]);
             if(cell_set==0){
                 cell_set=top_td.length -1; }
             else{
@@ -1141,6 +1148,7 @@ function main(){
 
         col_r.onclick=function(){
             top_td[cell_set].classList.remove('col_active');
+            clear_class(top_td[cell_set]);
             if(cell_set==top_td.length -1){
                 cell_set=0; }
             else{
@@ -1187,6 +1195,7 @@ function main(){
                     t_width.value=table_width.value;
                     renew_style(r_table);
                     r_table.style.width='';
+                    clear_style(r_table);
 
                     let col_w=getComputedStyle(col).width;
                     col_width.value=parseInt((col_w.replace('px', '')), 10);
@@ -1234,16 +1243,19 @@ function main(){
             let t_width=document.querySelector('#t_width'); // 表全幅の設定
             t_width.value=table_width.value;
             renew_style(r_table);
-            r_table.style.width=''; }
+            r_table.style.width='';
+            clear_style(r_table); }
 
 
         function all_set(n){
             for(let k=0; k<top_td.length; k++){
                 if(n==0){
                     if(top_td[k].style.width){
-                        top_td[k].style.width=''; }}
+                        top_td[k].style.width='';
+                        clear_style(top_td[k]); }}
                 else{
                     let set_w=getComputedStyle(top_td[k]).width;
+                    set_w=parseInt((set_w.replace('px', '')), 10) +'px'; // 整数値に変換
                     if(set_w && !top_td[k].style.width){
                         top_td[k].style.width=set_w; }}}}
 
@@ -1287,7 +1299,8 @@ function main(){
                 let top_td=r_table.querySelector('tr').querySelectorAll('td');
                 for(let k=0; k<top_td.length; k++){
                     if(top_td[k].style.width){
-                        top_td[k].style.width=''; }}
+                        top_td[k].style.width='';
+                        clear_style(top_td[k]); }}
 
                 t_width_lock(r_table);
 
@@ -1374,7 +1387,6 @@ function main(){
         let t_font=document.querySelector('#t_font'); // 文字サイズの設定
         let copy=document.querySelector('#copy'); // コピーボタン
         let set=document.querySelector('#set'); // 作成ボタン
-        let thead_style='padding-top: 0; height: 0; border: none; background: none;';
 
         if(task==2){
             set.value='表作成';
@@ -1423,11 +1435,8 @@ function main(){
                             cell.appendChild(iframe_doc.createTextNode('')); }} // 列の追加
 
                     let th_tr=n_table.createTHead().insertRow();
-                    th_tr.style.background='none';
-                    th_tr.style.lineHeight='0';
                     for(let j=0; j<col.value; j++){
                         let add_td=iframe_doc.createElement('td');
-                        add_td.setAttribute('style', thead_style);
                         th_tr.appendChild(add_td); } // Headerの追加
 
                     let table_id=new_table_id();
@@ -1474,14 +1483,12 @@ function main(){
 
             if(!r_table.querySelector('thead')){
                 let th_tr=r_table.createTHead().insertRow();
-                th_tr.style.background='none';
-                th_tr.style.lineHeight='0';
                 for(let j=0; j<col.value; j++){
                     let add_td=iframe_doc.createElement('td');
-                    add_td.setAttribute('style', thead_style);
                     if(t_td[j].style.width){
                         add_td.style.width=t_td[j].style.width; // width指定をコピー
-                        t_td[j].style.width=''; } // width指定をリセット
+                        t_td[j].style.width=''; // width指定をリセット
+                        clear_style(t_td[j]); }
                     th_tr.appendChild(add_td); }} // Headerの追加
 
 
@@ -1569,7 +1576,6 @@ function main(){
                     if(col.value>this_col){
                         for(let j=this_col; j<col.value; j++){
                             let add_td=iframe_doc.createElement('td');
-                            add_td.setAttribute('style', thead_style);
                             th_tr.appendChild(add_td); }} // Headerの列追加
                     else if(col.value<this_col){
                         if(com_ok==0){
@@ -1593,7 +1599,8 @@ function main(){
                         r_table.style.width='max-content';
                         t_width.value=real_width(r_table);
                         renew_style(r_table);
-                        r_table.style.width=''; }
+                        r_table.style.width='';
+                        clear_style(r_table); }
 
                 }} // set.onclick()
 
@@ -1602,7 +1609,7 @@ function main(){
                 let t_tr=r_table.querySelectorAll('tbody tr');
                 for(let k=0; k<t_tr.length; k++){
                     let allTd=t_tr[k].querySelectorAll('td');
-                    if(allTd[allTd.length-1].style.display=='none'){
+                    if(allTd[allTd.length-1].classList.contains('jh')){
                         for(let kd=allTd.length-1; kd>=0; kd--){
                             if(allTd[kd].hasAttribute('colspan')){
                                 let jump_d=allTd[kd].getAttribute('colspan')/1;
@@ -1619,7 +1626,7 @@ function main(){
                         let jump_d=last_allTd[k].getAttribute('colspan')/1;
                         k+=jump_d-1;
                         continue; }
-                    else if(last_allTd[k].style.display=='none'){
+                    else if(last_allTd[k].classList.contains('jh')){
                         for(let kr=t_tr.length-1; kr>=0; kr--){
                             let tr_allTd=t_tr[kr].querySelectorAll('td');
                             if(tr_allTd[k].hasAttribute('rowspan')){
@@ -1860,7 +1867,10 @@ function main(){
             '#'+ t_id +' tr:first-child { background-color: '+ header_back.value +'; } '+
             '#'+ t_id + left_full +' td:first-child { background-color: '+ left_back.value +'; } '+
             '#'+ t_id +' td { border: '+ cell_border_width +'px solid '+ border_color.value +
-            '; padding: 0.2em '+ add_padd +'em 0; height: 1.5em; }';
+            '; padding: 0.2em '+ add_padd +'em 0; height: 1.5em; } '+
+            '#'+ t_id +' thead tr:first-child { background: none; line-height: 0; } '+
+            '#'+ t_id +' thead td { padding-top: 0; height: 0; border: none; } '+
+            '#'+ t_id +' .jh { display: none; }';
 
         return css; }
 
@@ -1899,7 +1909,8 @@ function main(){
 
             let item=iframe_doc.querySelectorAll('.amb_active');
             for(let k=0; k<item.length; k++){
-                item[k].classList.remove('amb_active'); }}}
+                item[k].classList.remove('amb_active');
+                clear_class(item[k]); }}}
 
 
 
@@ -1910,15 +1921,18 @@ function main(){
 
             let trimr=iframe_doc.querySelectorAll('.trimr_active');
             for(let k=0; k<trimr.length; k++){
-                trimr[k].classList.remove('trimr_active'); }
+                trimr[k].classList.remove('trimr_active');
+                clear_class(trimr[k]); }
 
             let trimd=iframe_doc.querySelectorAll('.trimd_active');
             for(let k=0; k<trimd.length; k++){
-                trimd[k].classList.remove('trimd_active'); }
+                trimd[k].classList.remove('trimd_active');
+                clear_class(trimd[k]); }
 
             let trim=iframe_doc.querySelectorAll('.trim_active');
             for(let k=0; k<trim.length; k++){
-                trim[k].classList.remove('trim_active'); }}}
+                trim[k].classList.remove('trim_active');
+                clear_class(trim[k]); }}}
 
 
 
@@ -1929,7 +1943,8 @@ function main(){
 
             let col=iframe_doc.querySelectorAll('.col_active');
             for(let k=0; k<col.length; k++){
-                col[k].classList.remove('col_active'); }}}
+                col[k].classList.remove('col_active');
+                clear_class(col[k]); }}}
 
 
 
@@ -1939,7 +1954,8 @@ function main(){
             let iframe_doc=editor_iframe.contentWindow.document;
             let join=iframe_doc.querySelectorAll('.join_active');
             for(let k=0; k<join.length; k++){
-                join[k].classList.remove('join_active'); }}}
+                join[k].classList.remove('join_active');
+                clear_class(join[k]); }}}
 
 
 
@@ -1948,6 +1964,18 @@ function main(){
         remove_mark_trim();
         remove_mark_col();
         remove_mark_join(); }
+
+
+
+    function clear_class(elem){
+        if(elem.classList.length===0){
+            elem.removeAttribute('class'); }}
+
+
+
+    function clear_style(elm){ // 指定スタイルが無い要素の 空style属性を削除する
+        if(!elm.getAttribute('style') || elm.getAttribute('style').trim()===''){
+            elm.removeAttribute('style'); }}
 
 
 
@@ -2111,6 +2139,7 @@ function main(){
                                               ovlap +" ➔ "+ new_id); }
 
                                     ovlap_table[1].style.filter='';
+                                    clear_style(ovlap_table[1]);
                                 }, 600 ); }}
 
                     }}}}
