@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name        Blog Table ⭐
 // @namespace        http://tampermonkey.net/
-// @version        5.7
+// @version        5.8
 // @description        編集画面上にtable表を作成する
 // @author        Ameba Blog User
-// @match        https://blog.ameba.jp/ucs/entry/srventry*
-// @exclude        https://blog.ameba.jp/ucs/entry/srventrylist.do*
+// @match        https://blog.ameba.jp/ucs/entry/srventryinsertinput.do*
+// @match        https://blog.ameba.jp/ucs/entry/srventryupdateinput.do*
 // @icon        https://www.google.com/s2/favicons?sz=64&domain=ameblo.jp
 // @grant        none
 // @updateURL        https://github.com/personwritep/Blog_Table/raw/main/Blog_Table.user.js
