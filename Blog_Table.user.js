@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        Blog Table ⭐
 // @namespace        http://tampermonkey.net/
-// @version        5.8
-// @description        編集画面上にtable表を作成する
+// @version        5.9
+// @description        編集画面上にtable表を作成する　「Ctrl+F1」
 // @author        Ameba Blog User
 // @match        https://blog.ameba.jp/ucs/entry/srventryinsertinput.do*
 // @match        https://blog.ameba.jp/ucs/entry/srventryupdateinput.do*
@@ -12,6 +12,11 @@
 // @downloadURL        https://github.com/personwritep/Blog_Table/raw/main/Blog_Table.user.js
 // ==/UserScript==
 
+
+let listen=Symbol();
+let listenI=Symbol();
+let listenC=Symbol();
+let listenE=Symbol();
 
 
 let retry=0;
@@ -76,35 +81,48 @@ function main(){
     catch_key();
 
     function catch_key(){
+        if(!document[listen]){
+            document.addEventListener('keydown', check_key);
+            document[listen]=true; }
+
         if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
             let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
             let iframe_doc=editor_iframe.contentWindow.document;
 
-            iframe_doc.addEventListener('keydown', check_key);
-            document.addEventListener('keydown', check_key);
+            if(!iframe_doc[listen]){
+                iframe_doc.addEventListener('keydown', check_key);
+                iframe_doc[listen]=true; }}
 
-            function check_key(event){
-                if(event.keyCode==13 && iframe_doc.hasFocus()){
-                    remove_mark(); } // 改行入力が連続マークとなるのを抑止
+        function check_key(event){
+            if(event.keyCode==13){ // Enterで選択行が改行されるのを防ぐ
+                let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+                if(editor_iframe){
+                    let iframe_doc=editor_iframe.contentWindow.document;
+                    if(iframe_doc){
+                        let node=iframe_doc.getSelection()?.anchorNode;
+                        if(!(node?.nodeType===Node.TEXT_NODE? node.parentElement : node)
+                           ?.closest ?.('table')){
+                            remove_mark(); }}}}
 
-                let gate=-1;
-                if(event.ctrlKey==true){
-                    if(event.keyCode==112){
-                        event.preventDefault(); gate=1; }
-                    if(gate==1){
-                        event.stopImmediatePropagation();
-                        do_task(); }}}
+            let gate=-1;
+            if(event.ctrlKey==true){
+                if(event.keyCode==112 && !event.repeat){ //「Ctrl+F1」パネル表示
+                    event.preventDefault(); gate=1; }
+                if(gate==1){
+                    event.stopImmediatePropagation();
+                    do_task(); }}}
 
-            function do_task(){
-                if(task==0){
-                    task=1;
-                    table_panel();
-                    enhanced(); }
-                else{
-                    task=0;
-                    remove_t_panel();
-                    remove_mark_all(); }}}
+        function do_task(){
+            if(task==0){
+                task=1;
+                table_panel();
+                show_base(1); }
+            else{
+                task=0;
+                remove_t_panel();
+                remove_mark_all(); }}
 
+        enhanced();
         before_end();
 
     } // catch_key()
@@ -112,6 +130,7 @@ function main(){
 
 
     function table_panel(){
+        let help_url='https://ameblo.jp/personwritep/entry-12703182424.html';
 
         let panel=
             '<div id="t_panel">'+
@@ -141,14 +160,18 @@ function main(){
             '<input id="set" type="submit" value="　">'+
             '<span id="test"></span>'+
 
-            '<div id="first">'+
-            '<span id="bt_help">？</span>'+
-            '<div class="bt_help1">'+
+            '<div class="bt_base">'+
+            '<a href="'+ help_url +'" target="_blank"  rel="noopener noreferrer">'+
+            '<span class="help_link">？</span></a>'+
+
+            '<div class="bt_help0">'+
             '表を作成する場所 / 更新する表を<b>「Ctrl+左Click」</b>で指定してください</div>'+
-            '<div class="bt_help2">'+
+
+            '<div class="bt_help1">'+
             'TRIM処理：左端列・最上行を<b>「Alt+左Click」</b>して 削除する列・行'+
             '（追加の場合は後方の列・行）を指定してください</div>'+
-            '<div class="bt_help3">'+
+
+            '<div class="bt_help2">'+
             '<input class="trim_close" type="submit" value="✖">'+
             'TRIM操作の選択'+
             '<input id="trim_add" type="submit" value="追加">'+
@@ -157,7 +180,7 @@ function main(){
             '<input id="trim_cancel" type="submit" value="中止">'+
             '赤ラインの位置にTRIM処理を実行します</div>'+
 
-            '<div class="bc_help4">'+
+            '<div class="bt_help3">'+
             '<input id="col_close" type="submit" value="✖">'+
             '表幅'+
             '<div class="wpx wpxw lock">'+
@@ -178,7 +201,7 @@ function main(){
             '<input id="to_auto" type="button" value="Auto">'+
             '</div>'+
 
-            '<div class="bt_help5">'+
+            '<div class="bt_help4">'+
             '<input class="join_close" type="submit" value="✖">'+
             '結合開始セルの指定：<b>「Ctrl+Alt+左Click」</b>　　'+
             '結合方向：<input id="join_dir" type="submit" value="▶"> '+
@@ -187,7 +210,7 @@ function main(){
             '<input id="join_do" type="submit" value="実行">'+
             '</div>'+
 
-            '<div class="bt_help6">'+
+            '<div class="bt_help5">'+
             '結合開始セルの指定：<b>「Ctrl+Alt+左Click」</b>　　'+
             '開始セルを基準に 右方向 または 下方向 のセルを結合します。'+
             '</div>'+
@@ -243,15 +266,15 @@ function main(){
             '#set:hover, #copy:hover { background: #fff; color: #000; }'+
             '#set { background: #1976d2; color: #fff; }'+
 
-            '#first { position: absolute; top: 0; left: 0; color: #fff; background: #2196f3; '+
+            '.bt_base { position: absolute; top: 0; left: 0; color: #fff; background: #2196f3; '+
             'width: 100%; padding: 10px 0; font-size: 16px; text-align: center; }'+
-            '#bt_help { position: absolute; top: 11px; right: 25px; padding: 2px 1px 0; '+
+            '.help_link { position: absolute; top: 11px; right: 25px; padding: 2px 1px 0; '+
             'line-height: 16px; font-weight: bold; border-radius: 30px; '+
             'color: #2196f3; background: #fff; cursor: pointer; }'+
-            '.bt_help1 { text-align: left; margin-left: 60px; }'+
-            '.bt_help2, .bt_help6 { text-align: left; margin-left: 50px; }'+
-            '.bt_help3, .bt_help5 { text-align: left; margin: -3px 20px; }'+
-            '.bt_help3 input, .bt_help5 input { font: normal 15px/15px Meiryo; '+
+            '.bt_help0 { text-align: left; margin-left: 60px; }'+
+            '.bt_help1, .bt_help5 { text-align: left; margin-left: 50px; }'+
+            '.bt_help2, .bt_help4 { text-align: left; margin: -3px 20px; }'+
+            '.bt_help2 input, .bt_help4 input { font: normal 15px/15px Meiryo; '+
             'height: 26px !important; padding: 2px 6px 0; color: #333; '+
             'text-shadow: 0.5px 0 0.6px #666; border: none !important; border-radius: 3px; }'+
             '.trim_close , .join_close { margin-right: 30px !important; }'+
@@ -261,25 +284,25 @@ function main(){
             '#join_area { width: 48px; text-align: center; }'+
             '#join_area::-webkit-inner-spin-button { height: 20px; margin-top: 1px; }'+
 
-            '.bc_help4 { text-align: left; margin: -4px 20px; }'+
-            '.bc_help4 input { color: #000; background: #fff; border-radius: 3px; }'+
-            '.bc_help4 input[type=number]::-webkit-inner-spin-button { '+
+            '.bt_help3 { text-align: left; margin: -4px 20px; }'+
+            '.bt_help3 input { color: #000; background: #fff; border-radius: 3px; }'+
+            '.bt_help3 input[type=number]::-webkit-inner-spin-button { '+
             'height: 20px; margin-top: 1px; }'+
-            '.bc_help4 #col_close { margin-right: 30px !important; }'+
-            '.bc_help4 #specified1, .bc_help4 #specified2 { width: 18px; height: 18px; '+
+            '.bt_help3 #col_close { margin-right: 30px !important; }'+
+            '.bt_help3 #specified1, .bt_help3 #specified2 { width: 18px; height: 18px; '+
             'margin-right: 15px; vertical-align: -6px; border: 2px solid #fff; background: #fff; }'+
-            '.bc_help4 .wpx.wpxw { margin: 0 25px 0 6px; color: #000; }'+
-            '.bc_help4 .wpxw::after { right: 6px; padding-top: 1px; width: 20px; }'+
-            '.bc_help4 .wpxw.lock { pointer-events: none; }'+
-            '.bc_help4 #table_width, .bc_help4 #col_width { padding: 3px 6px 0 0 !important; '+
+            '.bt_help3 .wpx.wpxw { margin: 0 25px 0 6px; color: #000; }'+
+            '.bt_help3 .wpxw::after { right: 6px; padding-top: 1px; width: 20px; }'+
+            '.bt_help3 .wpxw.lock { pointer-events: none; }'+
+            '.bt_help3 #table_width, .bt_help3 #col_width { padding: 3px 6px 0 0 !important; '+
             'margin: 0; width: 72px; height: 27px; text-align: center; border: none; }'+
-            '.bc_help4 #col_close, .bc_help4 #col_l, .bc_help4 #col_r, .bc_help4 #to_auto, '+
-            '.bc_help4 #word_b { '+
+            '.bt_help3 #col_close, .bt_help3 #col_l, .bt_help3 #col_r, .bt_help3 #to_auto, '+
+            '.bt_help3 #word_b { '+
             'padding: 2px 6px 0; margin-right: 12px; height: 26px; border: none; }'+
-            '.bc_help4 #col_l { margin-left: 6px; }'+
-            '.bc_help4 #col_r { margin-right: 25px; }'+
-            '.bc_help4 .w_reset { margin: 0 6px 0 0; }'+
-            '.bc_help4 #word_b { width: 40px; margin-right: 20px; }'+
+            '.bt_help3 #col_l { margin-left: 6px; }'+
+            '.bt_help3 #col_r { margin-right: 25px; }'+
+            '.bt_help3 .w_reset { margin: 0 6px 0 0; }'+
+            '.bt_help3 #word_b { width: 40px; margin-right: 20px; }'+
 
             '#test { display: none; }'+
             '#cke_42 { top: 60px !important; left: calc( 50% - 45px) !important; }';
@@ -302,124 +325,124 @@ function main(){
 
 
     function enhanced(){
-        let target_r=document.getElementById('cke_1_contents'); // 監視 target
-        let monitor_r=new MutationObserver(select);
-        monitor_r.observe(target_r, {childList: true}); // ショートカット待受け開始
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            remove_mark_all(); // Html編集後のリセット
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+            if(iframe_doc){
+                let style_if=
+                    '<style id="style_if">'+
+                    '.amb_active { box-shadow: #fff -4px 0px, #2196f3 -8px 0px !important; }'+
+                    '.trimr_active { box-shadow: 0 -3px 0 red, inset 0 2px 0 red; }'+
+                    '.trimd_active { box-shadow: -3px 0 red, inset 2px 0 0 red; }'+
+                    '.trim_active { box-shadow: inset 0 0 0 50px rgba(255, 0, 0, 0.6); }'+
+                    '.col_active { box-shadow: inset 0 4px #2196f3; padding-top: 6px !important; }'+
+                    '.join_active { filter: invert(1); }'+
+                    '</style>';
 
-        select();
+                if(!iframe_doc.head.querySelector('#style_if')){
+                    iframe_doc.head.insertAdjacentHTML('beforeend', style_if); }
 
-        function select(){
-            if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
-                remove_mark_all(); // Html編集後のリセット
-                show_first(1);
-                let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
-                let iframe_doc=editor_iframe.contentWindow.document;
-                if(iframe_doc){
-                    let style_if=
-                        '<style id="style_if">'+
-                        '.amb_active { box-shadow: #fff -4px 0px, #2196f3 -8px 0px !important; }'+
-                        '.trimr_active { box-shadow: 0 -3px 0 red, inset 0 2px 0 red; }'+
-                        '.trimd_active { box-shadow: -3px 0 red, inset 2px 0 0 red; }'+
-                        '.trim_active { box-shadow: inset 0 0 0 50px rgba(255, 0, 0, 0.6); }'+
-                        '.col_active { box-shadow: inset 0 4px #2196f3; padding-top: 6px !important; }'+
-                        '.join_active { filter: invert(1); }'+
-                        '</style>';
+                let editor=iframe_doc.querySelector('.cke_editable');
+                if(editor){
+                    if(!editor[listenI]){
+                        editor.addEventListener('click', selector);
+                        editor[listenI]=true; }}
 
-                    if(!iframe_doc.head.querySelector('#style_if')){
-                        iframe_doc.head.insertAdjacentHTML('beforeend', style_if); }
 
-                    let editor=iframe_doc.querySelector('.cke_editable');
-                    if(editor){
-                        editor.onclick=function(event){
-                            event.stopImmediatePropagation();
+                function selector(event){
+                    table_keeper(); // 🟢
 
-                            table_keeper(); // 🟢
+                    if(task==1 || task==2 || task==3 || task==4){
+                        event.stopImmediatePropagation();
 
-                            if(event.ctrlKey){
-                                remove_mark_all();
-                                if(task==1 || task==2 || task==3 || task==4){
-                                    let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
-                                    if(elm.closest('table')!=null){
-                                        let table_id=elm.closest('table').id;
-                                        if(table_id && table_id.includes('ambt')){
-                                            let style_tag=elm.closest('table').previousElementSibling;
-                                            if(style_tag && style_tag.classList.contains(table_id)){
-                                                elm.closest('table').parentNode.classList.add('amb_active');
-                                                show_first(0);
-                                                task=3;
-                                                edit_table(task, elm.closest('table')); } //「表更新」
-                                            else{
-                                                remove_mark(); //「選択終了」
-                                                setTimeout(()=>{
-                                                    alert(
-                                                        " ⛔ 旧いバージョンの 「Blog Table」で作成された表は、"+
-                                                        "更新できません。\n"+
-                                                        "　　選択した表を更新するには ver.3.6 以前を使用して"+
-                                                        "ください");
-                                                },20 );}
-                                        }}
+                        if(event.ctrlKey){ //「Ctrl+Click」
+                            remove_mark_all();
+                            let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
+
+                            if(elm.closest('table')!=null){
+                                let table_id=elm.closest('table').id;
+                                if(table_id && table_id.includes('ambt')){
+                                    let style_tag=elm.closest('table').previousElementSibling;
+                                    if(style_tag && style_tag.classList.contains(table_id)){
+                                        elm.closest('table').parentNode.classList.add('amb_active');
+                                        show_base(0);
+                                        task=3;
+                                        edit_table(task, elm.closest('table')); } //「表更新」
 
                                     else{
-                                        if(elm.tagName=='P' || elm.tagName=='DIV'){
-                                            elm.classList.add('amb_active');
-                                            show_first(0);
-                                            task=2;
-                                            edit_table(task, 0); }}}} //「表作成」
+                                        remove_mark(); //「選択終了」
+                                        setTimeout(()=>{
+                                            alert(
+                                                " ⛔ 旧いバージョンの 「Blog Table」で作成された表は、"+
+                                                "更新できません。\n"+
+                                                "　　選択した表を更新するには ver.3.6 以前を使用して"+
+                                                "ください");
+                                        },20 );}
+                                }}
 
-                            if(event.altKey){
-                                if(!event.ctrlKey){
-                                    remove_mark_all();
-                                    if(task==1 || task==2 || task==3 || task==4){
-                                        let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
+                            else{
+                                if(elm.tagName=='P' || elm.tagName=='DIV'){
+                                    elm.classList.add('amb_active');
+                                    show_base(0);
+                                    task=2;
+                                    edit_table(task, 0); }}} //「表作成」
 
-                                        if(elm.closest('table')!=null){
-                                            let selectTr;
-                                            let selectTd;
-                                            let Table=elm.closest('table');
-                                            Table.parentNode.classList.add('amb_active');
 
-                                            let Tr=elm.closest('tr');
-                                            let allTR=Table.querySelectorAll('tbody tr');
-                                            for(let k=0; k<allTR.length; k++){
-                                                if(Tr==allTR[k]){
-                                                    selectTr=k; } // 選択した行
-                                                let Td=elm.closest('td');
-                                                let allTd=allTR[k].querySelectorAll('td');
-                                                for(let k=0; k<allTd.length; k++){
-                                                    if(Td==allTd[k]){
-                                                        selectTd=k; }}} // 選択した列
+                        if(event.altKey){
+                            if(!event.ctrlKey){ //「Alt+Click」
+                                remove_mark_all();
+                                let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
+                                if(elm.closest('table')!=null){
+                                    let selectTr;
+                                    let selectTd;
+                                    let Table=elm.closest('table');
+                                    Table.parentNode.classList.add('amb_active');
 
-                                            if((selectTr>0 && selectTd==0) || (selectTr==0 && selectTd>=0)){
-                                                trim_table(Table, selectTr, selectTd); }
-                                            else{
-                                                remove_mark_trim();
-                                                show_first(2); }}
-                                        else{
-                                            remove_mark_trim();
-                                            show_first(2); }}} //「表更新」列・行の修正
+                                    let Tr=elm.closest('tr');
+                                    let allTR=Table.querySelectorAll('tbody tr');
+                                    for(let k=0; k<allTR.length; k++){
+                                        if(Tr==allTR[k]){
+                                            selectTr=k; } // 選択した行
+                                        let Td=elm.closest('td');
+                                        let allTd=allTR[k].querySelectorAll('td');
+                                        for(let k=0; k<allTd.length; k++){
+                                            if(Td==allTd[k]){
+                                                selectTd=k; }}} // 選択した列
 
-                                if(event.ctrlKey){
-                                    remove_mark_all();
-                                    if(task==1 || task==2 || task==3 || task==4){
-                                        let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
+                                    if((selectTr>0 && selectTd==0) || (selectTr==0 && selectTd>=0)){
+                                        trim_table(Table, selectTr, selectTd); }
+                                    else{
+                                        remove_mark_trim();
+                                        show_base(2); }}
+                                else{
+                                    remove_mark_trim();
+                                    show_base(2); }} //「表更新」列・行の修正
 
-                                        if(elm.closest('table tbody')!=null){
-                                            let Table=elm.closest('table');
-                                            Table.parentNode.classList.add('amb_active');
-                                            let Td=elm.closest('td');
-                                            join_table(Table, Td); } //「表更新」列・行の結合
-                                        else{
-                                            remove_mark_join();
-                                            show_first(6); }}}}
 
-                        }}}}} // select()
+                            if(event.ctrlKey){ //「Ctrl+Alt+Click」
+                                remove_mark_all();
+                                let elm=iframe_doc.elementFromPoint(event.clientX, event.clientY);
+                                if(elm.closest('table tbody')!=null){
+                                    let Table=elm.closest('table');
+                                    Table.parentNode.classList.add('amb_active');
+                                    let Td=elm.closest('td');
+                                    join_table(Table, Td); } //「表更新」列・行の結合
+                                else{
+                                    remove_mark_join();
+                                    show_base(6); }}}
+
+                    } // if(task==1 || task==2 || task==3 || task==4)
+
+                } // selector()
+            }}
 
     } // enhanced()
 
 
 
     function join_table(Table, selectTd){
-        show_first(5);
+        show_base(5);
         selectTd.classList.add('join_active');
 
         let join_dir=document.querySelector('#join_dir');
@@ -597,14 +620,14 @@ function main(){
             join_close.onclick=function(){
                 remove_mark_join();
                 edit_table(3, Table);
-                show_first(0); }}
+                show_base(0); }}
 
     } // join_table()
 
 
 
     function trim_table(t_table, R, D){
-        show_first(3);
+        show_base(3);
         trim_select();
 
         if(trim==0){
@@ -643,7 +666,7 @@ function main(){
             trim_close.onclick=function(){
                 remove_mark_trim();
                 edit_table(3, t_table);
-                show_first(0); }}
+                show_base(0); }}
 
     } // trim_table()
 
@@ -713,13 +736,13 @@ function main(){
                 clear_style(t_table); }
 
             edit_table(3, t_table);
-            show_first(0); }
+            show_base(0); }
 
 
         trim_cancel.onclick=function(){
             remove_mark_trim();
             edit_table(3, t_table);
-            show_first(0); }
+            show_base(0); }
 
 
 
@@ -892,8 +915,7 @@ function main(){
             } // アイコンカラー取得開始
 
 
-
-            color_input[k].addEventListener('change', function(event){
+            color_input[k].onchange=(event)=>{
                 event.preventDefault();
                 if(test_colorE(color_input[k].value)){
                     color_input[k].value=hex_8_6(trust_color);
@@ -905,8 +927,7 @@ function main(){
                         color_input[k].style.boxShadow='inset 0 0 0 1px black'; // 担保コード
                         color_input[k].style.boxShadow=
                             'inset 0 0 0 1px black, inset 17px 0 ' + color_input[k].value+
-                            ', inset 18px 0 #aaa'; }}});
-
+                            ', inset 18px 0 #aaa'; }}}
 
 
             function test_colorE(color){
@@ -932,20 +953,24 @@ function main(){
 
 
 
-        document.addEventListener('mousedown', function(){ // 🟡
+        document.onmousedown=()=>{ // 🟡
             if(color_input[color_input_selector]){
                 color_input[color_input_selector].style.outline='none'; }
-            monitor_p.disconnect(); }); // カラー取得終了
+            monitor_p.disconnect(); } // カラー取得終了
 
 
 
         if(document.querySelector('.cke_wysiwyg_frame') !=null){
             let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
             let iframe_doc=editor_iframe.contentWindow.document;
-            iframe_doc.addEventListener('mousedown', function(){ // 🟡
-                if(color_input[color_input_selector]){
-                    color_input[color_input_selector].style.outline='none'; }
-                monitor_p.disconnect(); }); } // カラー取得終了
+
+            if(!iframe_doc[listenC]){
+                iframe_doc.addEventListener('mousedown', function(){ // 🟡
+                    if(color_input[color_input_selector]){
+                        color_input[color_input_selector].style.outline='none'; }
+                    monitor_p.disconnect(); });
+                iframe_doc[listenC]=true; }
+        } // カラー取得終了
 
 
 
@@ -954,7 +979,6 @@ function main(){
             color_input[color_input_selector].value='#'+ set_color;
             sticky_color(color_input[color_input_selector]);
             color_input[color_input_selector].style.outline='none';
-
             monitor_p.disconnect(); } // カラー取得終了
 
 
@@ -966,8 +990,8 @@ function main(){
         function stealth(){
             let color_generator=document.querySelector('.ck-l-colorGenerator');
             if(color_generator){
-                color_generator.addEventListener('mousedown', function(event){ // 🟡
-                    event.stopImmediatePropagation(); }); }}
+                color_generator.onmousedown=(event)=>{ // 🟡
+                    event.stopImmediatePropagation(); }}}
 
     } // pick_color()
 
@@ -1111,7 +1135,7 @@ function main(){
 
 
     function manu_width(r_table){
-        let bc_help4=document.querySelector('.bc_help4');
+        let bt_help3=document.querySelector('.bt_help3');
         let col_close=document.querySelector('#col_close');
         let table_width=document.querySelector('#table_width');
         let col_width=document.querySelector('#col_width');
@@ -1122,7 +1146,7 @@ function main(){
         let word_b=document.querySelector('#word_b');
         let to_auto=document.querySelector('#to_auto');
 
-        show_first(4);
+        show_base(4);
         spec_disp(1, 1);
         spec_disp(1, 2);
 
@@ -1276,7 +1300,7 @@ function main(){
         col_close.onclick=function(){
             task=3;
             remove_mark_col();
-            show_first(0);
+            show_base(0);
             edit_table(3, r_table); }
 
     } // manu_width()
@@ -1307,7 +1331,7 @@ function main(){
                 if(n==1){ // セル幅の設定パネルの場合
                     task=3;
                     remove_mark_col();
-                    show_first(0);
+                    show_base(0);
                     edit_table(3, r_table); }
             }}}
 
@@ -1318,9 +1342,10 @@ function main(){
         let border_color=document.querySelector('#border_color'); // 枠線色の設定
         two_way();
 
-        border_width.addEventListener('input', function(event){
+        border_width.oninput=(event)=>{
             event.preventDefault();
-            two_way(); });
+            two_way(); }
+
 
         function two_way(){
             if(border_width.value>-1){
@@ -1460,7 +1485,7 @@ function main(){
 
                     task=3;
                     remove_mark(); // 選択表示を整形
-                    show_first(0);
+                    show_base(0);
                     cn_table.parentNode.classList.add('amb_active');
                     edit_table(3, cn_table)
 
@@ -1979,43 +2004,24 @@ function main(){
 
 
 
-    function show_first(n){
-        let first=document.querySelector('#first');
-        let bt_help1=document.querySelector('.bt_help1');
-        let bt_help2=document.querySelector('.bt_help2');
-        let bt_help3=document.querySelector('.bt_help3');
-        let bc_help4=document.querySelector('.bc_help4');
-        let bt_help5=document.querySelector('.bt_help5');
-        let bt_help6=document.querySelector('.bt_help6');
-        if(first){
-            if(n==0){
-                first.style.display='none'; }
-            else{
-                first.style.display='block';
-                bt_help1.style.display='none';
-                bt_help2.style.display='none';
-                bt_help3.style.display='none';
-                bc_help4.style.display='none';
-                bt_help5.style.display='none';
-                bt_help6.style.display='none';
-                if(n==1){
-                    bt_help1.style.display='block'; }
-                if(n==2){
-                    bt_help2.style.display='block'; }
-                if(n==3){
-                    bt_help3.style.display='block'; }
-                if(n==4){
-                    bc_help4.style.display='block'; }
-                if(n==5){
-                    bt_help5.style.display='block'; }
-                if(n==6){
-                    bt_help6.style.display='block'; }}}
+    function show_base(n){
+        let bt_base=document.querySelector('.bt_base');
+        let helps=document.querySelectorAll('[class^="bt_help"]');
+        let target_class=`bt_help${n-1}`;
 
-        let bt_help=document.querySelector('#bt_help');
-        if(bt_help){
-            bt_help.onclick=function(){
-                let url='https://ameblo.jp/personwritep/entry-12703182424.html';
-                window.open(url, target="_blank"); }}}
+        if(bt_base){
+            if(n==0){
+                bt_base.style.display='none'; }
+            else{
+                bt_base.style.display='block';
+                helps.forEach((el)=>{
+                    if(el.className===target_class){
+                        el.style.display='block'; }
+                    else{
+                        el.style.display='none'; }});
+            }}
+
+    } // show_base()
 
 
 
@@ -2108,6 +2114,7 @@ function main(){
                                 else{
                                     style[k].remove(); }}}
 
+
                         let table_list=[]; // 重複チェック用配列
                         let ovlap; // 重複id名
                         let tables=iframe_body.querySelectorAll('table');
@@ -2143,14 +2150,19 @@ function main(){
                                 }, 600 ); }}
 
                     }}}}
+
     } // table_keeper();
 
 
 
     function before_end(){
         let submitButton=document.querySelectorAll('.js-submitButton');
-        submitButton[0].addEventListener('mousedown', all_clear, false);
-        submitButton[1].addEventListener('mousedown', all_clear, false);
+        if(!submitButton[0][listenE]){
+            submitButton[0].addEventListener('mousedown', all_clear, false);
+            submitButton[0][listenE]=true; }
+        if(!submitButton[1][listenE]){
+            submitButton[1].addEventListener('mousedown', all_clear, false);
+            submitButton[1][listenE]=true; }
 
         function all_clear(){
             let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
